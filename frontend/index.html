@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>TrueFace ID | Decentralized Identity</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>TrueFace <span class="highlight">ID</span></h1>
+            <p>AI-Powered Liveness Detection & Blockchain Identity</p>
+        </header>
+
+        <main>
+            <div class="video-container">
+                <video id="video" autoplay muted></video>
+                <canvas id="overlay"></canvas>
+                <div id="status-overlay">WAITING FOR CAMERA...</div>
+            </div>
+
+            <div class="controls">
+                <div class="step" id="step1">
+                    <h3>Step 1: Connect Wallet</h3>
+                    <button id="connectBtn" onclick="connectWallet()">Connect MetaMask</button>
+                    <p id="walletAddress">Not Connected</p>
+                </div>
+
+                <div class="step" id="step2">
+                    <h3>Step 2: Liveness Check</h3>
+                    <p id="challengeText">Challenge: <span id="actionRequired">...</span></p>
+                    <button id="startVerifyBtn" onclick="startVerification()">Start Verification</button>
+                </div>
+
+                <div class="step" id="step3">
+                    <h3>Step 3: Mint ID</h3>
+                    <button id="mintBtn" disabled>Mint Soulbound Token</button>
+                </div>
+            </div>
+            
+            <div class="logs">
+                <p>AI Status: <span id="aiLog">Idle</span></p>
+                <p>Deepfake Score: <span id="fakeScore">0</span></p>
+            </div>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
