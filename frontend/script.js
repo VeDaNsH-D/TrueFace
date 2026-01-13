@@ -1,5 +1,5 @@
 // ==========================================
-// 1. PASTE YOUR REMIX DATA HERE
+// 1. REMIX DATA HERE
 // ==========================================
 const CONTRACT_ADDRESS = "0x9433c6c9b96005992814A7566712F99044CAD075"; // 
 const ABI = [ 
