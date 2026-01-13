@@ -1,9 +1,16 @@
 // ==========================================
-// 1. REMIX DATA HERE
+// 1. CONFIGURATION
 // ==========================================
-const CONTRACT_ADDRESS = "0x9433c6c9b96005992814A7566712F99044CAD075"; // 
-const ABI = [ 
-    [
+// Your Deployed Smart Contract Address
+const CONTRACT_ADDRESS = "0x9433c6c9b96005992814A7566712F99044CAD075"; 
+
+// Your Live Render Backend URL
+const BACKEND_URL = "https://trueface-vbbv.onrender.com"; 
+
+// Mock Config for Hackathon (Allows Google Button to work without setup)
+const FIREBASE_CONFIG = { apiKey: "", authDomain: "" };
+
+const ABI = [
 	{
 		"inputs": [],
 		"stateMutability": "nonpayable",
@@ -142,126 +149,234 @@ const ABI = [
 		"stateMutability": "view",
 		"type": "function"
 	}
-]
 ];
 
 // ==========================================
-// 2. MAIN LOGIC
+// 2. STATE & SETUP
 // ==========================================
 let video = document.getElementById('video');
-let canvas = document.getElementById('overlay');
+let canvas = document.getElementById('meshCanvas');
 let ctx = canvas.getContext('2d');
 let verificationActive = false;
 let userAddress = null;
-let provider, signer, contract; // Added these variables to store blockchain connection
+let provider, signer, contract;
 
-// Access Camera
+// Initialize Camera immediately
 navigator.mediaDevices.getUserMedia({ video: true })
-    .then(stream => {
-        video.srcObject = stream;
-    });
+    .then(stream => { video.srcObject = stream; })
+    .catch(err => console.error("Camera Error:", err));
 
+// ==========================================
+// 3. STEP 1: AUTHENTICATION
+// ==========================================
+
+// A. MetaMask
 async function connectWallet() {
+    let btn = document.getElementById('walletBtn');
+    btn.innerText = "Connecting...";
+    
     if (window.ethereum) {
-        // Initialize Ethers.js
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        signer = provider.getSigner();
-        userAddress = await signer.getAddress();
-        
-        // Connect to your specific contract
-        contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+        try {
+            provider = new ethers.providers.Web3Provider(window.ethereum);
+            await provider.send("eth_requestAccounts", []);
+            signer = provider.getSigner();
+            userAddress = await signer.getAddress();
+            contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
 
-        document.getElementById('walletAddress').innerText = "Connected: " + userAddress.substring(0,6) + "...";
-        document.getElementById('step2').style.opacity = "1";
+            // Update UI
+            btn.style.borderColor = "#00ff88";
+            btn.style.color = "#00ff88";
+            btn.innerText = "Connected: " + userAddress.substring(0,6) + "...";
+            document.getElementById('authStatus').innerHTML = "✅ Wallet Connected";
+            
+            // MOVE TO NEXT STEP
+            setTimeout(() => goToStep(2), 1000);
+        } catch(e) {
+            btn.innerText = "Failed. Retry?";
+            alert("Connection Rejected");
+        }
     } else {
         alert("Please install MetaMask!");
     }
 }
 
-async function startVerification() {
-    verificationActive = true;
-    document.getElementById('status-overlay').innerText = "FETCHING CHALLENGE...";
+// B. Google Auth (Hackathon Mock Mode)
+function handleGoogleLogin() {
+    // Since we don't have real Firebase keys, we use this "Mock Mode" for the demo
+    // It visually simulates a successful Google Login.
+    let btn = document.getElementById('googleBtn');
+    btn.innerText = "Simulating Login...";
     
-    // Get Challenge from Backend
+    setTimeout(() => {
+        btn.style.background = "#00ff88";
+        btn.style.color = "#000";
+        btn.innerText = "Verified: hackathon-judge@gmail.com";
+        userAddress = "0xDemoUserFromGoogleAuth123"; 
+        
+        // Move to next step
+        setTimeout(() => goToStep(2), 1000);
+    }, 1500);
+}
+
+// Helper to switch steps
+function goToStep(stepNum) {
+    document.querySelectorAll('.step-container').forEach(el => {
+        el.classList.remove('active-step');
+        el.style.display = 'none';
+    });
+    let target = document.getElementById('step' + stepNum);
+    target.style.display = 'block';
+    setTimeout(() => target.classList.add('active-step'), 10);
+}
+
+// ==========================================
+// 4. STEP 2: LIVENESS & ANIMATION
+// ==========================================
+
+function drawSciFiMesh() {
+    if (!verificationActive) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        return;
+    }
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const w = canvas.width;
+    const h = canvas.height;
+    const time = Date.now() * 0.002;
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.strokeStyle = "rgba(0, 255, 136, 0.4)";
+    ctx.lineWidth = 1;
+
+    // Draw scanning grid
+    ctx.beginPath();
+    for (let x = 0; x <= w; x += 40) {
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+    }
+    for (let y = 0; y <= h; y += 40) {
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+    }
+    ctx.stroke();
+
+    // Draw Moving Scanner Bar
+    let scanY = (Math.sin(time) * 0.5 + 0.5) * h;
+    ctx.beginPath();
+    ctx.strokeStyle = "#00ff88";
+    ctx.lineWidth = 3;
+    ctx.moveTo(0, scanY);
+    ctx.lineTo(w, scanY);
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = "#00ff88";
+    ctx.stroke();
+    ctx.shadowBlur = 0; // Reset
+    
+    requestAnimationFrame(drawSciFiMesh);
+}
+
+async function startVerification() {
+    let btn = document.getElementById('startVerifyBtn');
+    btn.innerText = "INITIALIZING AI...";
+    btn.disabled = true;
+
+    // Start visuals
+    verificationActive = true;
+    drawSciFiMesh();
+
+    // Get Challenge
     try {
-        let response = await fetch('https://trueface-vbbv.onrender.com/get_challenge');
+        let response = await fetch(BACKEND_URL + '/get_challenge');
         let data = await response.json();
+        
         document.getElementById('actionRequired').innerText = data.challenge;
-        processFrames();
+        document.getElementById('status-overlay').innerText = "PERFORM ACTION";
+        
+        // Wait 1.5 second before capturing frames to let user read
+        setTimeout(() => {
+            btn.innerText = "SCANNING...";
+            processFrames();
+        }, 1500);
+
     } catch (e) {
-        alert("Error: Backend not running at localhost:8000");
+        alert("Backend Error: " + e.message);
+        verificationActive = false;
+        btn.disabled = false;
+        btn.innerText = "RETRY SCAN";
     }
 }
 
 async function processFrames() {
     if (!verificationActive) return;
 
-    // Capture frame from video
     let tempCanvas = document.createElement('canvas');
     tempCanvas.width = video.videoWidth;
     tempCanvas.height = video.videoHeight;
     tempCanvas.getContext('2d').drawImage(video, 0, 0);
     
-    // Convert to blob
     tempCanvas.toBlob(async (blob) => {
         let formData = new FormData();
         formData.append("file", blob, "frame.jpg");
 
-        // Send to AI Backend
         try {
-            let res = await fetch('https://trueface-vbbv.onrender.com/verify_frame', {
-                method: 'POST',
-                body: formData
-            });
+            let res = await fetch(BACKEND_URL + '/verify_frame', { method: 'POST', body: formData });
             let result = await res.json();
             
+            // Update Logs
             document.getElementById('aiLog').innerText = result.message;
-            document.getElementById('fakeScore').innerText = result.deepfake_score ? result.deepfake_score.toFixed(2) : "0";
+            document.getElementById('fakeScore').innerText = (result.deepfake_score || 0).toFixed(0);
 
             if (result.success) {
+                // SUCCESS!
                 verificationActive = false;
-                document.getElementById('status-overlay').style.color = "#00ff88";
-                document.getElementById('status-overlay').innerText = "VERIFIED HUMAN";
+                document.getElementById('status-overlay').innerText = "VERIFIED";
+                document.getElementById('status-overlay').className = "success-text";
+                document.getElementById('actionRequired').innerText = "COMPLETE";
                 
-                // Enable the Mint Button
-                let mintBtn = document.getElementById('mintBtn');
-                mintBtn.disabled = false;
-                mintBtn.style.backgroundColor = "#00ff88";
-                mintBtn.onclick = mintToken; // Attach the function to the button
+                setTimeout(() => goToStep(3), 1500);
+            } else {
+                // Keep trying
+                if (verificationActive) requestAnimationFrame(processFrames);
             }
-        } catch (err) {
-            console.error(err);
-        }
-        
-        if (verificationActive) requestAnimationFrame(processFrames);
+        } catch (err) { console.error(err); }
     }, 'image/jpeg');
 }
 
 // ==========================================
-// 3. NEW MINT FUNCTION 
+// 5. STEP 3: MINTING
 // ==========================================
 async function mintToken() {
-    if (!contract) {
-        alert("Wallet not connected!");
+    let btn = document.getElementById('mintBtn');
+    
+    // Safety check: if user used Google Login (Mock), they can't mint on real chain without a wallet
+    if (userAddress.startsWith("0xDemo") || !contract) {
+        btn.innerText = "Simulating Mint...";
+        setTimeout(() => {
+            alert("MINT SUCCESSFUL (Demo Mode) - Identity Verified!");
+            btn.innerText = "ID SECURED";
+            btn.disabled = true;
+            btn.style.background = "#00ff88";
+            btn.style.color = "black";
+        }, 2000);
         return;
     }
 
+    // Real Minting
     try {
-        document.getElementById('mintBtn').innerText = "Minting... (Check Wallet)";
+        btn.innerText = "Confirm in Wallet...";
+        const tx = await contract.mintIdentity(userAddress, "Qm_Hash_Proof_Hackathon_2026");
+        btn.innerText = "Minting on Chain...";
+        await tx.wait();
         
-        // Call the Smart Contract
-        // We send "ipfs_placeholder" because we aren't using real IPFS for the hackathon to save time
-        const tx = await contract.mintIdentity(userAddress, "ipfs_placeholder_hash");
-        
-        await tx.wait(); // Wait for blockchain confirmation
-        
-        alert("Success! Identity Token Minted on Blockchain.");
-        document.getElementById('mintBtn').innerText = "Minted!";
-        document.getElementById('mintBtn').disabled = true;
+        alert("SUCCESS! Soulbound Token Minted on Sepolia.");
+        btn.innerText = "ID SECURED";
+        btn.disabled = true;
+        btn.style.background = "#00ff88";
+        btn.style.color = "black";
     } catch (err) {
         console.error(err);
-        alert("Minting Failed: " + (err.reason || err.message));
-        document.getElementById('mintBtn').innerText = "Try Again";
+        alert("Mint Error: " + err.message);
+        btn.innerText = "TRY AGAIN";
     }
 }
