@@ -185,7 +185,7 @@ async function startVerification() {
     
     // Get Challenge from Backend
     try {
-        let response = await fetch('http://localhost:8000/get_challenge');
+        let response = await fetch('https://trueface-vbbv.onrender.com/get_challenge');
         let data = await response.json();
         document.getElementById('actionRequired').innerText = data.challenge;
         processFrames();
@@ -210,7 +210,7 @@ async function processFrames() {
 
         // Send to AI Backend
         try {
-            let res = await fetch('http://localhost:8000/verify_frame', {
+            let res = await fetch('https://trueface-vbbv.onrender.com/verify_frame', {
                 method: 'POST',
                 body: formData
             });
