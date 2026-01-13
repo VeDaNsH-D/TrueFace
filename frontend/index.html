@@ -2,46 +2,71 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>TrueFace ID | Decentralized Identity</title>
-    <link rel="stylesheet" href="style.css">
+    <title>TrueFace ID | Secure Identity</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* New Styles for Sequential Flow & Animation */
+        .step-container { display: none; opacity: 0; transition: opacity 0.5s ease-in; }
+        .active-step { display: block; opacity: 1; }
+        
+        /* Video Wrapper for Mesh Overlay */
+        .vid-wrapper { position: relative; width: 640px; height: 480px; margin: 0 auto; border: 2px solid #333; }
+        video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+
+        /* Button Click Feedback */
+        button:active { transform: scale(0.98); background: #222; border-color: #00ff88; }
+        .btn-google { background: #4285F4; border: none; }
+        .btn-google:hover { background: #357ae8; }
+
+        /* Status Indicators */
+        .success-text { color: #00ff88; text-shadow: 0 0 5px #00ff88; font-weight: bold; }
+    </style>
 </head>
 <body>
     <div class="container">
         <header>
             <h1>TrueFace <span class="highlight">ID</span></h1>
-            <p>AI-Powered Liveness Detection & Blockchain Identity</p>
+            <p id="mainStatus">System Status: <span style="color:red">OFFLINE</span></p>
         </header>
 
         <main>
-            <div class="video-container">
-                <video id="video" autoplay muted></video>
-                <canvas id="overlay"></canvas>
-                <div id="status-overlay">WAITING FOR CAMERA...</div>
-            </div>
-
-            <div class="controls">
-                <div class="step" id="step1">
-                    <h3>Step 1: Connect Wallet</h3>
-                    <button id="connectBtn" onclick="connectWallet()">Connect MetaMask</button>
-                    <p id="walletAddress">Not Connected</p>
-                </div>
-
-                <div class="step" id="step2">
-                    <h3>Step 2: Liveness Check</h3>
-                    <p id="challengeText">Challenge: <span id="actionRequired">...</span></p>
-                    <button id="startVerifyBtn" onclick="startVerification()">Start Verification</button>
-                </div>
-
-                <div class="step" id="step3">
-                    <h3>Step 3: Mint ID</h3>
-                    <button id="mintBtn" disabled>Mint Soulbound Token</button>
+            <div id="step1" class="step-container active-step">
+                <h2>1. Authenticate</h2>
+                <div class="card">
+                    <button id="googleBtn" class="btn-google" onclick="handleGoogleLogin()">Sign in with Google</button>
+                    <p style="margin: 10px 0;">-- OR --</p>
+                    <button id="walletBtn" onclick="connectWallet()">Connect MetaMask</button>
+                    <p id="authStatus" style="margin-top:10px; font-size: 0.9em; color: #888;">Waiting for input...</p>
                 </div>
             </div>
-            
-            <div class="logs">
-                <p>AI Status: <span id="aiLog">Idle</span></p>
-                <p>Deepfake Score: <span id="fakeScore">0</span></p>
+
+            <div id="step2" class="step-container">
+                <h2>2. Liveness Verification</h2>
+                <div class="vid-wrapper">
+                    <video id="video" autoplay muted></video>
+                    <canvas id="meshCanvas"></canvas> <div id="status-overlay">WAITING...</div>
+                </div>
+                <div class="controls">
+                    <p id="challengeText" style="font-size: 1.2em; margin: 15px;">Target: <span id="actionRequired" class="highlight">...</span></p>
+                    <button id="startVerifyBtn" onclick="startVerification()">START SCAN</button>
+                </div>
+                <div class="logs">
+                    <p>AI Confidence: <span id="fakeScore">0</span></p>
+                    <p>Status: <span id="aiLog">Idle</span></p>
+                </div>
+            </div>
+
+            <div id="step3" class="step-container">
+                <h2>3. Blockchain Identity</h2>
+                <div class="card">
+                    <p>Liveness Confirmed. User Authenticated.</p>
+                    <p class="highlight" style="font-size: 1.5em; margin: 20px;">Ready to Mint.</p>
+                    <button id="mintBtn" onclick="mintToken()">MINT SOULBOUND TOKEN</button>
+                </div>
             </div>
         </main>
     </div>
